@@ -66,6 +66,10 @@
                  :order {:field "t"}}}
      ]}))
 
+(defn save-data [path-data]
+  (doseq [{:keys [t x y vx vy]} path-data]
+    (spit "oscillator.dat" (str/join " " [t x y vx vy "\n"]) :append true)))
+
 (defn -main []
   (do (oz/start-server!)
       (plot-path (create-points initial-values "x" "y"))))
