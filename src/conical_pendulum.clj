@@ -1,7 +1,6 @@
 (ns conical-pendulum
   (:require [clojure.string :as str]
-            [clojure.java.shell :refer [sh]]
-            [gnuplot.core :as g]))
+            [selmer.parser :as s]))
 
 (def g 9.81)
 
@@ -18,7 +17,7 @@
             y (* -1 l (Math/cos theta))
             vx (* l dtheta-dt (Math/cos theta))
             vy (* l dtheta-dt (Math/sin theta))]
-        (str/join ", " [t x y vx vy theta dtheta-dt])))))
+        [t x y vx vy theta dtheta-dt]))))
 
 (def initial-values {:l 1
                      :theta0 0.314
@@ -31,20 +30,37 @@ set title 'Conical Pendulum';
 plot 'conical_pendulum.dat' using 2:3 w l t 'y(x)';
 ")
 
-(defn create-script [path-data]
-  (format "
+(defn create-script [{:keys [path animate]}]
+  (if animate
+    (s/render "
 set title 'Conical Pendulum';
-set xrange [0:%s];
-do for [ii=1:%s] {
-  plot 'conical_pendulum.dat' every ::1::ii w l ls 1, 'conical_pendulum.dat' every ::ii::ii w p ls 1
+set xrange [{{x-min}}:{{x-max}}];
+set yrange [{{y-min}}:{{y-max}}];
+do for [ii=1:{{iterations}}] {
+  plot 'conical_pendulum.dat' every ::1::ii using 2:3 w l ls 1 notitle,
+ 'conical_pendulum.dat' every ::ii::ii using 2:3 w p pt 7 ps 4 notitle;
 }
-" (:tf initial-values) (- (count path-data) 1)))
+" {:x-min (nth (apply min-key #(nth % 1) path) 1)
+   :x-max (nth (apply max-key #(nth % 1) path) 1)
+   :y-min (nth (apply min-key #(nth % 2) path) 2)
+   :y-max (nth (apply max-key #(nth % 2) path) 2)
+   :iterations (- (count path) 1)} )
+    (str "
+set title 'Conical Pendulum';
+plot 'conical_pendulum.dat' using 2:3 w l t 'y(x)';
+")))
 
-(defn plot-path [path-data]
-  (spit "conical_pendulum.dat" (str/join "\n" path-data))
-  (println (create-script path-data))
-  (sh "gnuplot" "-p" "-e" (create-script path-data)))
+
+(defn create-data-file [path]
+  (spit "conical_pendulum.dat" (str/join "\n" (map #(str/join ", " %) path))))
+
+(defn plot-path [{:keys [path animate] :as opts}]
+  (create-data-file path)
+  (println (create-script opts))
+  (-> (ProcessBuilder. ["gnuplot" "-p" "-e" (create-script opts)])
+      (.start)))
 
 (defn -main []
-  (do (plot-path (create-points initial-values))))
+  (do (plot-path {:path (create-points initial-values)
+                  :animate true})))
 
