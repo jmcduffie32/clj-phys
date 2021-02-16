@@ -2,24 +2,76 @@
   (:require [clojure.string :as str]
             [oz.core :as oz]))
 
-(def g 9.81)
-(def max-t 5)
+;; initial values and physical constants
+(def g 2)
+(def k 1)
+(def v0 10)
+(def theta (/ (* Math/PI 30) 180))
+(def t0 0)
+(def tf 5)
+(def dt 0.01)
+
+;; Definitions of motion
+(def v0x
+  (* v0 (Math/cos theta)))
+
+(def v0y
+  (* v0 (Math/sin theta)))
+
+;; With air resistance
+
+;; (defn x
+;;   "x position with resistance"
+;;   [t]
+;;   (* (/ v0x k) (- 1 (Math/exp (* -1 k t)))))
+
+;; (defn y [t]
+;;   "y position with resistance"
+;;   (- (* (/ 1 k)
+;;         (+ v0y (/ g k))
+;;         (- 1 (Math/exp (* -1 k t))))
+;;      (* (/ g k)
+;;         t)))
+
+;; (defn vx
+;;   "vx with resistance"
+;;   [t]
+;;   (* v0x (Math/exp (* -1 k t))))
+
+;; (defn vy
+;;   "vy with resistance"
+;;   [t]
+;;   (- (* (+ v0y (/ g k)) (Math/exp (* -1 k t))) (/ g k)))
+
+;; Without air resistance
+
+(defn x
+  "x position without resistance"
+  [t]
+  (* v0x t))
+
+(defn y
+  "y position without resistance"
+  [t]
+  (- (* v0y t) (/ (* g t t) 2)))
+
+(defn vx
+  "vx without resistance"
+  [t]
+  v0x)
+
+(defn vy
+  "vy without resistance"
+  [t]
+  (- v0y (* g t)))
+
 
 (defn create-points
-  [{:keys [theta v0 k t0 tf dt]}]
-  (let [theta (/ (* Math/PI theta) 180)
-        v0x (* v0 (Math/cos theta))
-        v0y (* v0 (Math/sin theta))]
-    (for [t (range t0 tf dt)]
-      (let [x (* (/ v0x k) (- 1 (Math/exp (* -1 k t))))
-            y (- (* (/ 1 k)
-                    (+ v0y (/ g k))
-                    (- 1 (Math/exp (* -1 k t))))
-                 (* (/ g k)
-                    t))
-            vx (* v0x (Math/exp (* -1 k t)))
-            vy (- (* (+ v0y (/ g k)) (Math/exp (* -1 k t))) (/ g k))]
-        {:t t :x x :y y :vx vx :vy vy}))))
+  "Generate data points for given equations of motion"
+  []
+  (for [t (range t0 tf dt)]
+    {:t t :x (x t) :y (y t) :vx (vx t) :vy (vy t)}))
+
 
 (defn animate-trajectory [path-data]
   (doall
@@ -42,17 +94,11 @@
                         :order {:field "t"}}
              :mark "line"}))
 
-(def initial-values {:v0 10
-                     :theta 45
-                     :k 1
-                     :t0 0
-                     :tf 20
-                     :dt 0.01})
 
 (defn plot-all []
   (oz/view!
-   {:data {:values (take-while #(< (:t %) max-t)
-                               (create-points initial-values))}
+   {:data {:values (take-while #(< (:t %) tf)
+                               (create-points))}
     :columns 2
     :concat
     [
@@ -76,5 +122,13 @@
 
 (defn -main []
   (do (oz/start-server!)
-      (plot-path (create-points initial-values "x" "y"))))
+      (plot-path (create-points))))
 
+(comment
+  (oz/start-server!)
+
+  (plot-all)
+
+  (plot-path (create-points))
+
+  ,)
