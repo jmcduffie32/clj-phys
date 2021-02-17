@@ -14,13 +14,13 @@
 
   (plot-path (create-points))
 
-  (def ^:dynamic omega1 3)
-  (def ^:dynamic omega2 2)
-  (doall (for [omega (range 10)]
+  (def ^:dynamic omega1 0)
+  (def ^:dynamic omega2 1)
+  (doall (for [omega (range 0 1.01 0.01)]
            (do
              (binding [omega1 omega]
                (plot-path (create-points)))
-             (Thread/sleep 1000))))
+             (Thread/sleep 500))))
 
   (animate-trajectory (create-points))
 
