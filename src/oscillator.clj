@@ -5,7 +5,7 @@
 (def omega1 3)
 (def omega2 5)
 (def t0 0)
-(def tf 20)
+(def tf 50)
 (def dt 0.01)
 
 
@@ -14,24 +14,33 @@
 
   (plot-path (create-points))
 
+  (def ^:dynamic omega1 3)
+  (def ^:dynamic omega2 2)
+  (doall (for [omega (range 10)]
+           (do
+             (binding [omega1 omega]
+               (plot-path (create-points)))
+             (Thread/sleep 1000))))
+
   (animate-trajectory (create-points))
 
   ,)
 
 (defn x [t]
-  (Math/cos (* omega1 t)))
+  (Math/cos (* @#'omega1 t)))
 
 (defn y [t]
-  (Math/sin (* omega2 t)))
+  (Math/sin (* @#'omega2 t)))
 
 (defn vx [t]
-  (* -1 omega1 (Math/sin (* omega1 t))))
+  (* -1 omega1 (Math/sin (* @#'omega1 t))))
 
 (defn vy [t]
-  (* -1 omega2 (Math/cos (* omega2 t))))
+  (* -1 omega2 (Math/cos (* @#'omega2 t))))
 
 (defn create-points
   []
+  (println #'omega1)
   (for [t (range t0 tf dt)]
     {:t t :x (x t) :y (y t) :vx (vx t) :vy (vy t)}))
 
