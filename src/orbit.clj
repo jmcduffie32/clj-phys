@@ -4,58 +4,83 @@
 
 (def re
   "radius of the earth"
-  6.3781e6)
+  6.378e6)
 (def me
   "mass of the earth"
   5.972e24)
 (def G 6.67430e-11)
 (def gm (* me G))
-(def drag )
 (def t0 0)
-(def tf 20)
-(def dt 0.01)
+(def dt 0.1)
 (def dt2 (/ dt 2))
 
-(defn a [x y vx vy t]
-  (let [r (Math/sqrt (+ (* x x) (* y y)))
-        v2 (+ (* vx vx) (* vy vy))
-        v1 (Math/sqrt v2)]
-    [(* -1 x gm (/ 1 (* r r r)))
-     (* -1 y gm (/ 1 (* r r r)))]))
+(def t-max (* 20 3600))
 
-(defn rk-step [t0 x0 y0 vx0 yx0]
-  (let [t1 (+ t0 dt)
-        th (+ t0 (/ dt 2))
-        [ax0 ay0] (a x0 y0 vx0 vy0 t0)
-        kx1 (* dt2 ax0)
-        ky1 (* dt2 ay0)
-        lx1 (* dt2 vx0)
-        ly1 (* dt2 vy0)
-        [ax1 ay1] (a (+ x0 lx1) (+ y0 ly1) (+ vx0 kx1) (+ vy0 ky1))
-        kx2 (* dt2 ax1)
-        ky2 (* dt2 ay1)
-        lx2 (* dt2 (+ vx0 kx1))
-        ly2 (* dt2 (+ vy0 ky1))
-        [ax2 ay2] (a (+ x0 lx2) (+ y0 ly2) (+ vx0 kx2) (+ vy0 ky2))
-        kx3 (* dt2 ax2)
-        ky3 (* dt2 ay2)
-        lx3 (* dt2 (+ vx0 kx2))
-        ly3 (* dt2 (+ vy0 ky2))
-        [ax3 ay3] (a (+ x0 lx3) (+ y0 ly3) (+ vx0 kx3) (+ vy0 ky3))
-        kx4 (* dt2 ax3)
-        ky4 (* dt2 ay3)
-        lx4 (* dt2 (+ vx0 kx3))
-        ly4 (* dt2 (+ vy0 ky3))]
-    [(+ x0 (/ (+ lx1 (* 2 lx2) lx3 lx4) 3))
-     (+ y0 (/ (+ ly1 (* 2 ly2) ly3 ly4) 3))
-     (+ vx0 (/ (+ kx1 (* 2 kx2) kx3 kx4) 3))
-     (+ vy0 (/ (+ ky1 (* 2 ky2) ky3 ky4) 3))]))
+(def r0 (+ (* 1 1e3) re))
+(def x0 0)
+(def y0 r0)
+(def vx0 (Math/sqrt (/ gm r0)))
+(def vy0 0)
 
-(defn runge-kutta )
+
+(comment
+  (oz/start-server!)
+
+  (plot-path (take-nth 100 (create-points)))
+
+  (plot-all)
+
+  (take 10 (create-points))
+
+  ,)
+
+(defn a [x y]
+  (let [r (Math/sqrt (+ (Math/pow x 2) (Math/pow y 2)))]
+    [(* -1 x gm (/ 1 (Math/pow r 3)))
+     (* -1 y gm (/ 1 (Math/pow r 3)))]))
+
+(defn rk-step [t0 x0 y0 vx0 vy0]
+  (let [h dt
+        [k1vx k1vy] (a x0 y0)
+        k1x vx0
+        k1y vy0
+
+        [k2vx k2vy] (a (+ x0 (* k1x (/ h 2)))
+                       (+ y0 (* k1y (/ h 2))))
+        k2x (* vx0 k1vx (/ h 2))
+        k2y (* vy0 k1vy (/ h 2))
+
+        [k3vx k3vy] (a (+ x0 (* k2x (/ h 2)))
+                       (+ y0 (* k2y (/ h 2))))
+        k3x (* vx0 k2vx (/ h 2))
+        k3y (* vy0 k2vy (/ h 2))
+
+        [k4vx k4vy] (a (+ x0 (* k3x h))
+                       (+ y0 (* k3y h)))
+        k4x (* vx0 k3vx h)
+        k4y (* vy0 k3vy h)]
+    [(+ x0 (* (+ k1x (* 2 k2x) (* 2 k3x) k4x) (/ h 6)))
+     (+ y0 (* (+ k1y (* 2 k2y) (* 2 k3y) k4y) (/ h 6)))
+     (+ vx0 (* (+ k1vx (* 2 k2vx) (* 2 k3vx) k4vx) (/ h 6)))
+     (+ vy0 (* (+ k1vy (* 2 k2vy) (* 2 k3vy) k4vy) (/ h 6)))]))
+
 (defn create-points
   []
-  (for [t (range t0 tf dt)]
-    {:t t :x (x t) :y (y t) :vx (vx t) :vy (vy t)}))
+  (loop [x0 x0
+         y0 y0
+         vx0 vx0
+         vy0 vy0
+         t 0
+         points []]
+    (if (>= t t-max)
+      points
+      (let [[x y vx vy] (rk-step t x0 y0 vx0 vy0)]
+        (recur x
+               y
+               vx
+               vy
+               (+ t dt)
+               (conj points {:t t :x x :y y :vx vx :vy vy}))))))
 
 (defn animate-trajectory [path-data]
   (doall
@@ -70,7 +95,7 @@
        (Thread/sleep 100)))))
 
 (defn plot-path [path-data]
-  (oz/view! {:data {:values (take-while #(< (:t %) tf)
+  (oz/view! {:data {:values (take-while #(< (:t %) t-max)
                                         path-data)}
              :encoding {:x {:field "x" :type "quantitative"}
                         :y {:field "y" :type "quantitative"}
@@ -80,8 +105,8 @@
 
 (defn plot-all []
   (oz/view!
-   {:data {:values (take-while #(< (:t %) tf)
-                               (create-points))}
+   {:data {:values (take-while #(< (:t %) t-max)
+                               (take-nth 100 (create-points)))}
     :columns 2
     :concat
     [
