@@ -8,24 +8,6 @@
 (def tf 50)
 (def dt 0.01)
 
-
-(comment
-  (oz.server/stop!)
-  (oz/start-server!)
-
-  (plot-path (create-points omega1 omega2))
-
-  (def omega1 3)
-  (def omega2 2)
-  (doall (for [omega (range 10)]
-           (do
-             (plot-path (create-points omega omega2))
-             (Thread/sleep 1000))))
-
-  (animate-trajectory (create-points omega1 omega2))
-
-  ,)
-
 (defn x [t omega]
   (Math/cos (* omega t)))
 
@@ -101,3 +83,19 @@
   (do (oz/start-server!)
       (plot-path (create-points omega1 omega2))))
 
+(comment
+  (oz.server/stop!)
+  (oz/start-server!)
+
+  (plot-path (create-points omega1 omega2))
+
+  (def omega1 3)
+  (def omega2 2)
+  (doseq [omega (range 10)]
+    (do
+      (plot-path (create-points omega omega2))
+      (Thread/sleep 1000)))
+
+  (animate-trajectory (create-points omega1 omega2))
+
+  ,)
