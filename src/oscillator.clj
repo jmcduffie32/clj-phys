@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [oz.core :as oz]))
 
-(def omega1 3)
+(def omega1 5)
 (def omega2 5)
 (def t0 0)
 (def tf 50)
@@ -10,51 +10,54 @@
 
 
 (comment
+  (oz.server/stop!)
   (oz/start-server!)
 
-  (plot-path (create-points))
+  (plot-path (create-points omega1 omega2))
 
-  (def ^:dynamic omega1 3)
-  (def ^:dynamic omega2 2)
+  (def omega1 3)
+  (def omega2 2)
   (doall (for [omega (range 10)]
            (do
-             (binding [omega1 omega]
-               (plot-path (create-points)))
+             (plot-path (create-points omega omega2))
              (Thread/sleep 1000))))
 
-  (animate-trajectory (create-points))
+  (animate-trajectory (create-points omega1 omega2))
 
   ,)
 
-(defn x [t]
-  (Math/cos (* @#'omega1 t)))
+(defn x [t omega]
+  (Math/cos (* omega t)))
 
-(defn y [t]
-  (Math/sin (* @#'omega2 t)))
+(defn y [t omega]
+  (Math/sin (* omega t)))
 
-(defn vx [t]
-  (* -1 omega1 (Math/sin (* @#'omega1 t))))
+(defn vx [t omega]
+  (* -1 omega (Math/sin (* omega t))))
 
-(defn vy [t]
-  (* -1 omega2 (Math/cos (* @#'omega2 t))))
+(defn vy [t omega]
+  (* -1 omega (Math/cos (* omega t))))
 
 (defn create-points
-  []
-  (println #'omega1)
-  (for [t (range t0 tf dt)]
-    {:t t :x (x t) :y (y t) :vx (vx t) :vy (vy t)}))
+  [omega1 omega2]
+  (map
+   (fn [t] {:t t
+            :x (x t omega1)
+            :y (y t omega2)
+            :vx (vx t omega1)
+            :vy (vy t omega2)})
+   (range t0 tf dt)))
 
 (defn animate-trajectory [path-data]
-  (doall
-   (for [datum path-data]
-     (do
-       (oz/view! {:data {:values [datum]}
-                  :encoding {:x {:field "x" :type "quantitative"
-                                 :scale {:domain [-1 1]}}
-                             :y {:field "y" :type "quantitative"
-                                 :scale {:domain [-1 1]}}}
-                  :mark "point"})
-       (Thread/sleep 100)))))
+  (doseq [datum path-data]
+    (do
+      (oz/view! {:data {:values [datum]}
+                 :encoding {:x {:field "x" :type "quantitative"
+                                :scale {:domain [-1 1]}}
+                            :y {:field "y" :type "quantitative"
+                                :scale {:domain [-1 1]}}}
+                 :mark "point"})
+      (Thread/sleep 100))))
 
 (defn plot-path [path-data]
   (oz/view! {:data {:values (take-while #(< (:t %) tf)
@@ -68,7 +71,7 @@
 (defn plot-all []
   (oz/view!
    {:data {:values (take-while #(< (:t %) tf)
-                               (create-points))}
+                               (create-points omega1 omega2))}
     :columns 2
     :concat
     [
@@ -96,5 +99,5 @@
 
 (defn -main []
   (do (oz/start-server!)
-      (plot-path (create-points))))
+      (plot-path (create-points omega1 omega2))))
 
